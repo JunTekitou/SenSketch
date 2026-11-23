@@ -40,10 +40,6 @@
     #speedToggle .speed-needle { stroke: #fff; stroke-width: 2; stroke-linecap: round; transform-origin: 12px 16px; transition: transform .18s ease; }
     #speedToggle[data-speed="slow"] .speed-needle { transform: rotate(-42deg); }
     #speedToggle[data-speed="fast"] .speed-needle { transform: rotate(42deg); }
-    .hint { position: fixed; z-index: 2; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; color: rgba(207,218,237,.37); pointer-events: none; transition: opacity .3s; }
-    .hint.hidden { opacity: 0; }
-    .hint .glyph { font-size: 27px; margin-bottom: 8px; }
-    .hint p { margin: 0; font-size: 12px; letter-spacing: .08em; }
     .dock { position: fixed; z-index: 3; inset: auto 0 0; height: 20vh; min-height: 116px; display: flex; background: linear-gradient(180deg, rgba(7,9,14,.12), rgba(7,9,14,.84)); border-top: 1px solid rgba(255,255,255,.12); }
     .control-card { width: 50%; height: 100%; display: grid; gap: 1px; background: rgba(255,255,255,.16); }
     .control-card.left { grid-template-columns: 1fr 1fr; border-right: 1px solid rgba(255,255,255,.18); }
@@ -71,7 +67,6 @@
     <div class="actions"><button class="tool white" id="colorToggle" aria-label="線の色を切り替え" title="色を切り替え"><span class="swatch"></span></button><button class="tool" id="strokeToggle" type="button" data-weight="thin" aria-label="線の太さ: 細い" aria-pressed="false" title="線の太さを切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="thin-line" d="M5 7h14" stroke-width="1.6"/><path class="thick-line" d="M5 17h14" stroke-width="4"/></svg></button><button class="tool" id="speedToggle" type="button" data-speed="slow" aria-label="速度: 遅い" aria-pressed="false" title="速度を切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="speed-arc" d="M4 17a8 8 0 0 1 16 0"/><path class="speed-needle" d="M12 16 8 9"/></svg></button><button class="tool" id="neonToggle" type="button" aria-pressed="false">ネオン OFF</button><button class="tool" id="resetBtn">クリア</button></div>
     <button class="tool" id="downloadBtn" type="button" aria-label="描いた画像をダウンロード" title="画像を保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg></button>
   </header>
-  <div class="hint" id="hint"><div class="glyph">✦</div><p>矢印キー / パッドで線を描こう</p></div>
   <footer class="dock">
     <div class="control-card left" aria-label="左手用コントローラー">
       <button class="dir" data-dir="L" aria-label="左へ"><svg class="dir-icon left" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 7.5 12 18l9-10.5z"/></svg></button><button class="dir" data-dir="R" aria-label="右へ"><svg class="dir-icon right" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 7.5 12 18l9-10.5z"/></svg></button>
@@ -90,14 +85,37 @@
       };
       const cursorPosition = document.querySelector('#cursorPosition');
       const dock = document.querySelector('.dock');
+      const topbar = document.querySelector('.topbar');
       const held = new Set(), particles = [];
       const keys = { ArrowLeft: 'L', a: 'L', A: 'L', ArrowRight: 'R', d: 'R', D: 'R', ArrowUp: 'U', w: 'U', W: 'U', ArrowDown: 'D', s: 'D', S: 'D' };
       let dpr = 1, pos = { x: 0, y: 0 }, hue = 188, white = true, neon = false, thickLine = false, started = false;
       let fastSpeed = false;
+      let saveTimer = null, lastSaveAt = performance.now();
+      let animationFrameId = null;
+      let lastCanvasGeometry = null;
+      function logDiagnostic(event, details = {}) {
+        const b = bounds();
+        const entry = {
+          event,
+          time: new Date().toISOString(),
+          viewport: { width: innerWidth, height: innerHeight, dpr },
+          bounds: { left: b.left, right: b.right, top: b.top, bottom: b.bottom },
+          cursor: { x: pos.x, y: pos.y },
+          details
+        };
+        const serialized = JSON.stringify(entry);
+        console.info('[SenSketchDiag]', serialized);
+        try { window.SenSketchAndroid?.logDiagnostic(serialized); } catch (_) { }
+      }
       const speed = () => fastSpeed ? 1.25 : .6;
+      const SAVE_INTERVAL_MS = 5000;
+      function requestFrame() {
+        if (animationFrameId === null && !document.hidden) animationFrameId = requestAnimationFrame(frame);
+      }
       const bounds = (dockTop = dock.getBoundingClientRect().top) => {
         const margin = 24;
-        return { left: margin, right: innerWidth - margin, top: 84, bottom: dockTop - margin };
+        const drawingTop = Math.max(84, topbar.getBoundingClientRect().bottom + 24);
+        return { left: margin, right: innerWidth - margin, top: drawingTop, bottom: dockTop - margin };
       };
       function resize() {
         dpr = Math.min(devicePixelRatio || 1, 2);
@@ -106,45 +124,210 @@
         const b = bounds();
         pos.x = Math.max(b.left, Math.min(b.right, pos.x || innerWidth / 2));
         pos.y = Math.max(b.top, Math.min(b.bottom, pos.y || (b.top + b.bottom) / 2));
+        lastCanvasGeometry = { width: innerWidth, height: innerHeight, dpr, bounds: { ...b } };
       }
       // Preserve existing artwork through resizes using a snapshot before changing the backing store.
       function resizeCanvas() {
+        const previous = lastCanvasGeometry;
+        const oldBounds = previous?.bounds || bounds();
+        const cursorX = (pos.x - oldBounds.left) / Math.max(1, oldBounds.right - oldBounds.left);
+        const cursorY = (pos.y - oldBounds.top) / Math.max(1, oldBounds.bottom - oldBounds.top);
         const snapshot = document.createElement('canvas'); snapshot.width = canvas.width; snapshot.height = canvas.height;
         if (snapshot.width && snapshot.height) snapshot.getContext('2d').drawImage(canvas, 0, 0);
         resize();
-        if (snapshot.width && snapshot.height) ctx.drawImage(snapshot, 0, 0, snapshot.width, snapshot.height, 0, 0, innerWidth, innerHeight);
+        const newBounds = bounds();
+        if (snapshot.width && snapshot.height) {
+          if (previous) {
+            ctx.drawImage(
+              snapshot,
+              oldBounds.left * previous.dpr, oldBounds.top * previous.dpr,
+              (oldBounds.right - oldBounds.left) * previous.dpr, (oldBounds.bottom - oldBounds.top) * previous.dpr,
+              newBounds.left, newBounds.top,
+              newBounds.right - newBounds.left, newBounds.bottom - newBounds.top
+            );
+          } else {
+            ctx.drawImage(snapshot, 0, 0, snapshot.width, snapshot.height, 0, 0, innerWidth, innerHeight);
+          }
+        }
+        pos.x = newBounds.left + Math.max(0, Math.min(1, cursorX)) * (newBounds.right - newBounds.left);
+        pos.y = newBounds.top + Math.max(0, Math.min(1, cursorY)) * (newBounds.bottom - newBounds.top);
+        lastCanvasGeometry = { width: innerWidth, height: innerHeight, dpr, bounds: { ...newBounds } };
+        const changed = !previous || previous.width !== innerWidth || previous.height !== innerHeight ||
+          previous.dpr !== dpr || oldBounds.top !== newBounds.top || oldBounds.bottom !== newBounds.bottom ||
+          oldBounds.left !== newBounds.left || oldBounds.right !== newBounds.right;
+        if (changed) logDiagnostic('canvas_resize', {
+          previous: previous ? { width: previous.width, height: previous.height, dpr: previous.dpr, bounds: oldBounds } : null,
+          cursorRatio: { x: cursorX, y: cursorY },
+          canvas: { width: canvas.width, height: canvas.height }
+        });
+        drawOverlay();
+        updatePositionMarkers(newBounds);
+        if (particles.length || held.size) requestFrame();
       }
-      resize(); addEventListener('resize', resizeCanvas);
-      function setHeld(dir, on, el) { on ? held.add(dir) : held.delete(dir); if (el) el.classList.toggle('active', on); }
+      function syncControls() {
+        const colorButton = document.querySelector('#colorToggle');
+        colorButton.classList.toggle('white', white);
+        const strokeButton = document.querySelector('#strokeToggle');
+        strokeButton.dataset.weight = thickLine ? 'thick' : 'thin';
+        strokeButton.setAttribute('aria-label', `線の太さ: ${thickLine ? '太い' : '細い'}`);
+        strokeButton.setAttribute('aria-pressed', String(thickLine));
+        const speedButton = document.querySelector('#speedToggle');
+        speedButton.dataset.speed = fastSpeed ? 'fast' : 'slow';
+        speedButton.setAttribute('aria-label', `速度: ${fastSpeed ? '速い' : '遅い'}`);
+        speedButton.setAttribute('aria-pressed', String(fastSpeed));
+        const neonButton = document.querySelector('#neonToggle');
+        neonButton.textContent = `ネオン ${neon ? 'ON' : 'OFF'}`;
+        neonButton.setAttribute('aria-pressed', String(neon));
+      }
+      function persistState() {
+        const b = bounds();
+        const savedArtwork = document.createElement('canvas');
+        savedArtwork.width = Math.max(1, Math.round((b.right - b.left) * dpr));
+        savedArtwork.height = Math.max(1, Math.round((b.bottom - b.top) * dpr));
+        savedArtwork.getContext('2d').drawImage(
+          canvas,
+          b.left * dpr, b.top * dpr, (b.right - b.left) * dpr, (b.bottom - b.top) * dpr,
+          0, 0, savedArtwork.width, savedArtwork.height
+        );
+        const state = {
+          version: 2,
+          artwork: savedArtwork.toDataURL('image/png'),
+          cursorX: (pos.x - b.left) / Math.max(1, b.right - b.left),
+          cursorY: (pos.y - b.top) / Math.max(1, b.bottom - b.top),
+          hue, white, neon, thickLine, fastSpeed, started, savedAt: Date.now()
+        };
+        const serialized = JSON.stringify(state);
+        try {
+          if (window.SenSketchAndroid) window.SenSketchAndroid.saveState(serialized);
+          else localStorage.setItem('sensketch-state', serialized);
+        } catch (error) { console.warn('Could not save SenSketch state.', error); }
+        lastSaveAt = performance.now();
+      }
+      function scheduleSave(immediate = false) {
+        if (saveTimer !== null) {
+          if (!immediate) return;
+          clearTimeout(saveTimer);
+          saveTimer = null;
+        }
+        const delay = immediate ? 0 : Math.max(0, SAVE_INTERVAL_MS - (performance.now() - lastSaveAt));
+        saveTimer = setTimeout(() => {
+          saveTimer = null;
+          persistState();
+        }, delay);
+      }
+      function restoreState() {
+        try {
+          const serialized = window.SenSketchAndroid
+            ? window.SenSketchAndroid.loadState()
+            : localStorage.getItem('sensketch-state');
+          if (!serialized) return;
+          const state = JSON.parse(serialized);
+          if (state.version !== 1 && state.version !== 2) return;
+          logDiagnostic('restore_state', {
+            version: state.version,
+            savedAt: state.savedAt ?? null,
+            ageMs: Number.isFinite(state.savedAt) ? Date.now() - state.savedAt : null,
+            savedCursor: { x: state.cursorX, y: state.cursorY },
+            artworkType: typeof state.artwork
+          });
+          white = state.white !== false;
+          neon = state.neon === true;
+          thickLine = state.thickLine === true;
+          fastSpeed = state.fastSpeed === true;
+          hue = Number.isFinite(state.hue) ? state.hue : 188;
+          const b = bounds();
+          pos.x = b.left + Math.max(0, Math.min(1, Number(state.cursorX) || 0)) * (b.right - b.left);
+          pos.y = b.top + Math.max(0, Math.min(1, Number(state.cursorY) || 0)) * (b.bottom - b.top);
+          started = state.started === true;
+          syncControls();
+          if (typeof state.artwork === 'string' && state.artwork.startsWith('data:image/png')) {
+            const image = new Image();
+            image.onload = () => {
+              const currentBounds = bounds();
+              if (state.version === 2) {
+                ctx.drawImage(image, currentBounds.left, currentBounds.top, currentBounds.right - currentBounds.left, currentBounds.bottom - currentBounds.top);
+                pos.x = currentBounds.left + Math.max(0, Math.min(1, Number(state.cursorX) || 0)) * (currentBounds.right - currentBounds.left);
+                pos.y = currentBounds.top + Math.max(0, Math.min(1, Number(state.cursorY) || 0)) * (currentBounds.bottom - currentBounds.top);
+              } else {
+                ctx.drawImage(image, 0, 0, innerWidth, innerHeight);
+              }
+              logDiagnostic('restore_artwork_loaded', {
+                version: state.version,
+                image: { width: image.naturalWidth, height: image.naturalHeight },
+                savedCursor: { x: state.cursorX, y: state.cursorY },
+                restoredCursor: { x: pos.x, y: pos.y }
+              });
+              updatePositionMarkers(currentBounds);
+            };
+            image.src = state.artwork;
+          }
+        } catch (error) { console.warn('Could not restore SenSketch state.', error); }
+      }
+      resize();
+      restoreState();
+      logDiagnostic('startup');
+      addEventListener('resize', resizeCanvas);
+      // Android WebView can update its usable content area after window load
+      // without changing innerHeight. Track the controls that define the
+      // drawing bounds as well as the visual viewport so artwork and cursor
+      // stay aligned when system bars/insets settle.
+      const layoutObserver = new ResizeObserver(() => resizeCanvas());
+      layoutObserver.observe(topbar);
+      layoutObserver.observe(dock);
+      if (window.visualViewport) {
+        visualViewport.addEventListener('resize', resizeCanvas);
+      }
+      addEventListener('pagehide', () => { logDiagnostic('pagehide'); scheduleSave(true); });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          logDiagnostic('visibility_hidden');
+          held.clear();
+          if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+          animationFrameId = null;
+          scheduleSave(true);
+        } else {
+          drawOverlay();
+          updatePositionMarkers(bounds());
+          requestFrame();
+        }
+      });
+      function setHeld(dir, on, el) {
+        on ? held.add(dir) : held.delete(dir);
+        if (el) el.classList.toggle('active', on);
+        if (held.size) requestFrame();
+      }
       document.querySelectorAll('.dir').forEach(el => {
         const dir = el.dataset.dir;
         el.addEventListener('pointerdown', e => { e.preventDefault(); el.setPointerCapture(e.pointerId); setHeld(dir, true, el); });
-        const release = e => { e.preventDefault(); setHeld(dir, false, el); };
-        el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release); el.addEventListener('lostpointercapture', () => setHeld(dir, false, el));
+        const release = e => { e.preventDefault(); setHeld(dir, false, el); scheduleSave(true); };
+        el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release); el.addEventListener('lostpointercapture', () => { setHeld(dir, false, el); scheduleSave(true); });
       });
-      addEventListener('keydown', e => { const d = keys[e.key]; if (d) { e.preventDefault(); held.add(d); } });
-      addEventListener('keyup', e => { const d = keys[e.key]; if (d) { held.delete(d); } });
-      addEventListener('blur', () => held.clear());
-      document.querySelector('#colorToggle').addEventListener('click', e => { white = !white; e.currentTarget.classList.toggle('white', white); });
+      addEventListener('keydown', e => { const d = keys[e.key]; if (d) { e.preventDefault(); held.add(d); requestFrame(); } });
+      addEventListener('keyup', e => { const d = keys[e.key]; if (d) { held.delete(d); if (held.size) requestFrame(); scheduleSave(true); } });
+      addEventListener('blur', () => { held.clear(); scheduleSave(true); });
+      document.querySelector('#colorToggle').addEventListener('click', e => { white = !white; e.currentTarget.classList.toggle('white', white); scheduleSave(true); });
       document.querySelector('#strokeToggle').addEventListener('click', e => {
         thickLine = !thickLine;
         e.currentTarget.dataset.weight = thickLine ? 'thick' : 'thin';
         e.currentTarget.setAttribute('aria-label', `線の太さ: ${thickLine ? '太い' : '細い'}`);
         e.currentTarget.setAttribute('aria-pressed', String(thickLine));
+        scheduleSave(true);
       });
       document.querySelector('#speedToggle').addEventListener('click', e => {
         fastSpeed = !fastSpeed;
         e.currentTarget.dataset.speed = fastSpeed ? 'fast' : 'slow';
         e.currentTarget.setAttribute('aria-label', `速度: ${fastSpeed ? '速い' : '遅い'}`);
         e.currentTarget.setAttribute('aria-pressed', String(fastSpeed));
+        scheduleSave(true);
       });
       document.querySelector('#neonToggle').addEventListener('click', e => {
         neon = !neon;
         e.currentTarget.textContent = `ネオン ${neon ? 'ON' : 'OFF'}`;
         e.currentTarget.setAttribute('aria-pressed', String(neon));
+        scheduleSave(true);
       });
-      document.querySelector('#resetBtn').addEventListener('click', () => { ctx.clearRect(0, 0, innerWidth, innerHeight); particles.length = 0; held.clear(); started = false; document.querySelector('#hint').classList.remove('hidden'); });
-      document.querySelector('#downloadBtn').addEventListener('click', () => {
+      document.querySelector('#resetBtn').addEventListener('click', () => { ctx.clearRect(0, 0, innerWidth, innerHeight); particles.length = 0; drawOverlay(); held.clear(); started = false; scheduleSave(true); });
+      function createExportCanvas() {
         const b = bounds(), output = document.createElement('canvas');
         const outWidth = Math.max(1, Math.round((b.right - b.left) * dpr));
         const outHeight = Math.max(1, Math.round((b.bottom - b.top) * dpr));
@@ -153,36 +336,35 @@
         outCtx.fillStyle = getComputedStyle(document.body).backgroundColor;
         outCtx.fillRect(0, 0, outWidth, outHeight);
         outCtx.drawImage(canvas, Math.round(b.left * dpr), Math.round(b.top * dpr), outWidth, outHeight, 0, 0, outWidth, outHeight);
-        output.toBlob(blob => {
+        return output;
+      }
+      window.sensketchExportPng = () => {
+        createExportCanvas().toBlob(blob => {
+          if (!blob) return;
+          const reader = new FileReader();
+          reader.onloadend = () => window.SenSketchAndroid?.savePng(reader.result.split(',')[1]);
+          reader.readAsDataURL(blob);
+        }, 'image/png');
+      };
+      document.querySelector('#downloadBtn').addEventListener('click', () => {
+        const fileName = `SenSketch-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+        if (window.SenSketchAndroid) {
+          window.SenSketchAndroid.requestPngSave(fileName);
+          return;
+        }
+        createExportCanvas().toBlob(blob => {
           if (!blob) return;
           const url = URL.createObjectURL(blob), link = document.createElement('a');
-          link.href = url; link.download = `SenSketch-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+          link.href = url; link.download = fileName;
           link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
         }, 'image/png');
       });
       function color() { return white ? '#fff' : `hsl(${hue}, 100%, 66%)`; }
       function spark(moving) {
-        if (!neon) return;
-        const count = moving ? 2 : (Math.random() < .08 ? 1 : 0);
-        for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2, v = moving ? .5 + Math.random() * 1.2 : .2; particles.push({ x: pos.x, y: pos.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: moving ? 20 : 14, max: moving ? 20 : 14, size: .7 + Math.random() * 1.1, color: moving ? color() : 'rgba(255,255,255,.9)' }); }
+        if (!neon || !moving) return;
+        for (let i = 0; i < 2; i++) { const a = Math.random() * Math.PI * 2, v = .5 + Math.random() * 1.2; particles.push({ x: pos.x, y: pos.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 20, max: 20, size: .7 + Math.random() * 1.1, color: color() }); }
       }
-      function frame() {
-        const dockTop = dock.getBoundingClientRect().top;
-        const b = bounds(dockTop);
-        let dx = (held.has('R') ? 1 : 0) - (held.has('L') ? 1 : 0), dy = (held.has('D') ? 1 : 0) - (held.has('U') ? 1 : 0);
-        if (dx || dy) {
-          const mag = Math.hypot(dx, dy); dx = dx / mag * speed(); dy = dy / mag * speed();
-          const nx = Math.max(b.left, Math.min(b.right, pos.x + dx)), ny = Math.max(b.top, Math.min(b.bottom, pos.y + dy));
-          if (nx !== pos.x || ny !== pos.y) {
-            ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(nx, ny); ctx.strokeStyle = color(); ctx.lineWidth = thickLine ? 2.4 : 1.2; ctx.lineCap = 'round'; ctx.shadowColor = color(); ctx.shadowBlur = neon ? 13 : 0; ctx.stroke(); ctx.shadowBlur = 0;
-            pos = { x: nx, y: ny }; hue = (hue + .16) % 360; started = true; document.querySelector('#hint').classList.add('hidden'); spark(true);
-          }
-        } else if (started) spark(false);
-        fctx.clearRect(0, 0, innerWidth, innerHeight);
-        fctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--canvas-edge').trim(); fctx.lineWidth = 1;
-        fctx.strokeRect(b.left + .5, b.top + .5, b.right - b.left - 1, b.bottom - b.top - 1);
-        for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vx *= .95; p.vy *= .95; p.life--; if (p.life <= 0) { particles.splice(i, 1); continue; } fctx.globalAlpha = p.life / p.max; fctx.fillStyle = p.color; fctx.shadowColor = p.color; fctx.shadowBlur = 8; fctx.beginPath(); fctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); fctx.fill(); }
-        fctx.globalAlpha = 1; fctx.shadowBlur = 0;
+      function updatePositionMarkers(b = bounds()) {
         const markers = [
           [edgeMarkers.top, pos.x, b.top - 7],
           [edgeMarkers.left, b.left - 7, pos.y],
@@ -193,9 +375,45 @@
           marker.style.left = `${x}px`; marker.style.top = `${y}px`; marker.style.transform = 'translate(-50%, -50%)';
         }
         cursorPosition.style.left = `${pos.x}px`; cursorPosition.style.top = `${pos.y}px`; cursorPosition.style.transform = 'translate(-50%, -50%)';
-        requestAnimationFrame(frame);
       }
-      frame();
+      function drawOverlay() {
+        const b = bounds();
+        fctx.clearRect(0, 0, innerWidth, innerHeight);
+        fctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--canvas-edge').trim(); fctx.lineWidth = 1;
+        fctx.strokeRect(b.left + .5, b.top + .5, b.right - b.left - 1, b.bottom - b.top - 1);
+        for (const p of particles) {
+          fctx.globalAlpha = p.life / p.max; fctx.fillStyle = p.color; fctx.shadowColor = p.color; fctx.shadowBlur = 8;
+          fctx.beginPath(); fctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); fctx.fill();
+        }
+        fctx.globalAlpha = 1; fctx.shadowBlur = 0;
+      }
+      function frame() {
+        animationFrameId = null;
+        if (document.hidden) return;
+        const b = bounds();
+        let dx = (held.has('R') ? 1 : 0) - (held.has('L') ? 1 : 0), dy = (held.has('D') ? 1 : 0) - (held.has('U') ? 1 : 0);
+        let moved = false;
+        if (dx || dy) {
+          const mag = Math.hypot(dx, dy); dx = dx / mag * speed(); dy = dy / mag * speed();
+          const nx = Math.max(b.left, Math.min(b.right, pos.x + dx)), ny = Math.max(b.top, Math.min(b.bottom, pos.y + dy));
+          if (nx !== pos.x || ny !== pos.y) {
+            ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(nx, ny); ctx.strokeStyle = color(); ctx.lineWidth = thickLine ? 2.4 : 1.2; ctx.lineCap = 'round'; ctx.shadowColor = color(); ctx.shadowBlur = neon ? 13 : 0; ctx.stroke(); ctx.shadowBlur = 0;
+            pos = { x: nx, y: ny }; hue = (hue + .16) % 360; started = true; moved = true; spark(true); scheduleSave();
+          }
+        }
+        if (moved) updatePositionMarkers(b);
+        const hadParticles = particles.length > 0;
+        if (hadParticles) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vx *= .95; p.vy *= .95; p.life--;
+            if (p.life <= 0) particles.splice(i, 1);
+          }
+          drawOverlay();
+        }
+        if (((dx || dy) && moved) || particles.length > 0) requestFrame();
+      }
+      drawOverlay();
+      updatePositionMarkers(bounds());
     })();
   </script>
 </body>

@@ -6,6 +6,7 @@ rem Build, install, and launch SenSketch on a connected Android device.
 rem Optional: set ANDROID_SERIAL=<device_serial> when multiple devices are connected.
 
 set "PROJECT_DIR=C:\app\AndroidStudioProjects\SenSketch"
+set "CONFIG_FILE=C:\app\AndroidStudioProjects\_Common\config\aab.conf"
 set "PACKAGE_NAME=com.matsuge.gm.sensketch"
 set "GRADLEW=%PROJECT_DIR%\gradlew.bat"
 set "ANDROID_STUDIO_JBR=%ProgramFiles%\Android\Android Studio\jbr"
@@ -21,6 +22,60 @@ if not exist "%GRADLEW%" (
     pause
     exit /b 1
 )
+if not exist "%CONFIG_FILE%" (
+    echo [ERROR] Release signing configuration was not found: %CONFIG_FILE%
+    pause
+    exit /b 1
+)
+set "KEYSTORE_FILE="
+set "KEYSTORE_PASSWORD="
+set "KEY_ALIAS="
+set "KEY_PASSWORD="
+for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%CONFIG_FILE%") do set "%%A=%%B"
+if "%KEYSTORE_FILE%"=="" (
+    echo [ERROR] Set KEYSTORE_FILE in aab.conf.
+    pause
+    exit /b 1
+)
+if "%KEYSTORE_PASSWORD%"=="" (
+    echo [ERROR] Set KEYSTORE_PASSWORD in aab.conf.
+    pause
+    exit /b 1
+)
+if "%KEY_ALIAS%"=="" (
+    echo [ERROR] Set KEY_ALIAS in aab.conf.
+    pause
+    exit /b 1
+)
+if "%KEY_PASSWORD%"=="" (
+    echo [ERROR] Set KEY_PASSWORD in aab.conf.
+    pause
+    exit /b 1
+)
+if "%KEYSTORE_PASSWORD%"=="CHANGE_ME" (
+    echo [ERROR] Replace the placeholder values in aab.conf.
+    pause
+    exit /b 1
+)
+if "%KEY_ALIAS%"=="CHANGE_ME" (
+    echo [ERROR] Replace the placeholder values in aab.conf.
+    pause
+    exit /b 1
+)
+if "%KEY_PASSWORD%"=="CHANGE_ME" (
+    echo [ERROR] Replace the placeholder values in aab.conf.
+    pause
+    exit /b 1
+)
+if not exist "%KEYSTORE_FILE%" (
+    echo [ERROR] Release keystore file was not found. Check KEYSTORE_FILE in aab.conf.
+    pause
+    exit /b 1
+)
+set "ANDROID_SIGNING_STORE_FILE=%KEYSTORE_FILE%"
+set "ANDROID_SIGNING_STORE_PASSWORD=%KEYSTORE_PASSWORD%"
+set "ANDROID_SIGNING_KEY_ALIAS=%KEY_ALIAS%"
+set "ANDROID_SIGNING_KEY_PASSWORD=%KEY_PASSWORD%"
 where adb >nul 2>nul
 if errorlevel 1 (
     echo [ERROR] adb was not found in PATH.
@@ -37,13 +92,14 @@ if errorlevel 1 (
     exit /b 1
 )
 echo.
-echo === Build and install debug APK ===
+echo === Build and install signed release APK ===
 pushd "%PROJECT_DIR%" >nul
-call "%GRADLEW%" installDebug
+call "%GRADLEW%" installRelease
 set "RESULT=%ERRORLEVEL%"
 popd >nul
 if not "%RESULT%"=="0" (
-    echo [ERROR] Gradle installDebug failed. Exit code: %RESULT%
+    echo [ERROR] Gradle installRelease failed. Exit code: %RESULT%
+    echo         If a Debug version is already installed, uninstall it before installing this differently signed Release version.
     pause
     exit /b %RESULT%
 )

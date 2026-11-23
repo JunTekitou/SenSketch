@@ -18,6 +18,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Keep the Android app and GitHub Pages on the same drawing-tool source.
+    sourceSets.getByName("main").assets.srcDir(rootProject.file("docs"))
+
     buildTypes {
         release {
             optimization {
