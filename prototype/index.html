@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#07090e">
+  <title>SenSketch — 一筆書き</title>
+  <style>
+    :root { color-scheme: dark; --ink: #f4f6fb; --muted: #838b9a; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--scene-bg); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+    body { --scene-bg: #07090e; --panel: rgba(17,21,30,.88); --canvas-edge: rgba(210,220,238,.14); }
+    #art, #fx { position: fixed; inset: 0; width: 100%; height: 100%; }
+    #art { z-index: 0; }
+    #fx { z-index: 1; pointer-events: none; }
+    .edge-marker { position: fixed; z-index: 2; pointer-events: none; overflow: visible; filter: drop-shadow(0 0 2px rgba(255,55,75,.32)); opacity: .9; }
+    .edge-marker.vertical { width: 14px; height: 10px; }
+    .edge-marker.horizontal { width: 10px; height: 14px; }
+    .cursor-position { position: fixed; z-index: 2; width: 5px; height: 5px; border: 1px solid rgba(255,255,255,.92); border-radius: 50%; background: #fff; pointer-events: none; box-shadow: 0 0 3px rgba(255,255,255,.28); }
+    .cursor-position::after { content: ""; position: absolute; inset: -3px; border: 1px solid rgba(255,255,255,.82); border-radius: 50%; animation: cursor-pulse 2s ease-out infinite; will-change: transform, opacity; }
+    @keyframes cursor-pulse { 0% { transform: scale(.72); opacity: .78; } 100% { transform: scale(1.9); opacity: 0; } }
+    .topbar { position: fixed; z-index: 3; inset: max(16px, env(safe-area-inset-top)) 16px auto; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+    .actions { display: flex; gap: 8px; pointer-events: auto; }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    .tool { height: 38px; min-width: 40px; padding: 0 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: var(--panel); color: #dce2ed; backdrop-filter: blur(12px); }
+    .tool:hover { border-color: rgba(255,255,255,.35); }
+    #downloadBtn { width: 40px; padding: 0; display: grid; place-items: center; pointer-events: auto; }
+    #downloadBtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    #colorToggle { width: 40px; padding: 0; display: grid; place-items: center; }
+    .swatch { width: 17px; height: 17px; border-radius: 50%; background: linear-gradient(135deg,#62eeff,#d26dff); box-shadow: 0 0 12px rgba(98,238,255,.55); }
+    #colorToggle.white .swatch { background: #fff; box-shadow: 0 0 10px #fff; }
+    #strokeToggle { width: 40px; padding: 0; display: grid; place-items: center; }
+    #strokeToggle svg { width: 22px; height: 22px; }
+    #strokeToggle .thin-line, #strokeToggle .thick-line { stroke: rgba(230,236,246,.35); stroke-linecap: round; }
+    #strokeToggle[data-weight="thin"] .thin-line, #strokeToggle[data-weight="thick"] .thick-line { stroke: #fff; }
+    #speedToggle { width: 40px; padding: 0; display: grid; place-items: center; }
+    #speedToggle svg { width: 22px; height: 22px; }
+    #speedToggle .speed-arc { fill: none; stroke: rgba(230,236,246,.38); stroke-width: 1.8; stroke-linecap: round; }
+    #speedToggle .speed-needle { stroke: #fff; stroke-width: 2; stroke-linecap: round; transform-origin: 12px 16px; transition: transform .18s ease; }
+    #speedToggle[data-speed="slow"] .speed-needle { transform: rotate(-42deg); }
+    #speedToggle[data-speed="fast"] .speed-needle { transform: rotate(42deg); }
+    .hint { position: fixed; z-index: 2; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; color: rgba(207,218,237,.37); pointer-events: none; transition: opacity .3s; }
+    .hint.hidden { opacity: 0; }
+    .hint .glyph { font-size: 27px; margin-bottom: 8px; }
+    .hint p { margin: 0; font-size: 12px; letter-spacing: .08em; }
+    .dock { position: fixed; z-index: 3; inset: auto 0 0; height: 20vh; min-height: 116px; display: flex; background: linear-gradient(180deg, rgba(7,9,14,.12), rgba(7,9,14,.84)); border-top: 1px solid rgba(255,255,255,.12); }
+    .control-card { width: 50%; height: 100%; display: grid; gap: 1px; background: rgba(255,255,255,.16); }
+    .control-card.left { grid-template-columns: 1fr 1fr; border-right: 1px solid rgba(255,255,255,.18); }
+    .control-card.right { grid-template-rows: 1fr 1fr; }
+    .dir { min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: linear-gradient(145deg, rgba(23,29,42,.88), rgba(12,16,24,.76)); color: rgba(235,241,250,.7); display: grid; place-items: center; touch-action: none; -webkit-tap-highlight-color: transparent; transition: background .12s ease, color .12s ease, box-shadow .12s ease; }
+    .dir-icon { width: clamp(24px, 4.5vh, 38px); height: clamp(24px, 4.5vh, 38px); overflow: visible; filter: drop-shadow(0 2px 5px rgba(0,0,0,.28)); transition: transform .12s ease, filter .12s ease; }
+    .dir-icon.left { transform: rotate(90deg); }
+    .dir-icon.right { transform: rotate(-90deg); }
+    .dir-icon.up { transform: rotate(180deg); }
+    .dir.active, .dir:active { background: linear-gradient(145deg, rgba(41,115,139,.72), rgba(19,65,84,.76)); color: #b8f5ff; box-shadow: inset 0 0 0 1px rgba(120,231,255,.38), inset 0 0 24px rgba(73,218,255,.14); }
+    .dir.active .dir-icon, .dir:active .dir-icon { filter: drop-shadow(0 0 8px rgba(102,232,255,.65)); }
+    .dir:focus-visible { position: relative; z-index: 1; outline: 2px solid #8ceeff; outline-offset: -4px; }
+    @media (max-width: 520px) { .dock { height: 20vh; min-height: 116px; } .topbar { inset-inline: 12px; } }
+  </style>
+</head>
+<body>
+  <canvas id="art" aria-label="一筆書きキャンバス"></canvas>
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <svg class="edge-marker vertical" id="markerTop" viewBox="0 0 14 10" aria-hidden="true"><path d="M2 2 7 8 12 2" fill="none" stroke="#ff4058" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <svg class="edge-marker horizontal" id="markerLeft" viewBox="0 0 10 14" aria-hidden="true"><path d="M2 2 8 7 2 12" fill="none" stroke="#ff4058" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <svg class="edge-marker horizontal" id="markerRight" viewBox="0 0 10 14" aria-hidden="true"><path d="M8 2 2 7 8 12" fill="none" stroke="#ff4058" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <svg class="edge-marker vertical" id="markerBottom" viewBox="0 0 14 10" aria-hidden="true"><path d="M2 8 7 2 12 8" fill="none" stroke="#ff4058" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="cursor-position" id="cursorPosition" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="actions"><button class="tool white" id="colorToggle" aria-label="線の色を切り替え" title="色を切り替え"><span class="swatch"></span></button><button class="tool" id="strokeToggle" type="button" data-weight="thin" aria-label="線の太さ: 細い" aria-pressed="false" title="線の太さを切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="thin-line" d="M5 7h14" stroke-width="1.6"/><path class="thick-line" d="M5 17h14" stroke-width="4"/></svg></button><button class="tool" id="speedToggle" type="button" data-speed="slow" aria-label="速度: 遅い" aria-pressed="false" title="速度を切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="speed-arc" d="M4 17a8 8 0 0 1 16 0"/><path class="speed-needle" d="M12 16 8 9"/></svg></button><button class="tool" id="neonToggle" type="button" aria-pressed="false">ネオン OFF</button><button class="tool" id="resetBtn">クリア</button></div>
+    <button class="tool" id="downloadBtn" type="button" aria-label="描いた画像をダウンロード" title="画像を保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg></button>
+  </header>
+  <div class="hint" id="hint"><div class="glyph">✦</div><p>矢印キー / パッドで線を描こう</p></div>
+  <footer class="dock">
+    <div class="control-card left" aria-label="左手用コントローラー">
+      <button class="dir" data-dir="L" aria-label="左へ"><svg class="dir-icon left" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 7.5 12 18l9-10.5z"/></svg></button><button class="dir" data-dir="R" aria-label="右へ"><svg class="dir-icon right" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 7.5 12 18l9-10.5z"/></svg></button>
+    </div>
+    <div class="control-card right" aria-label="右手用コントローラー">
+      <button class="dir" data-dir="U" aria-label="上へ"><svg class="dir-icon up" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 7.5 12 18l9-10.5z"/></svg></button><button class="dir" data-dir="D" aria-label="下へ"><svg class="dir-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 7.5 12 18l9-10.5z"/></svg></button>
+    </div>
+  </footer>
+  <script>
+    (() => {
+      const canvas = document.querySelector('#art'), ctx = canvas.getContext('2d');
+      const fx = document.querySelector('#fx'), fctx = fx.getContext('2d');
+      const edgeMarkers = {
+        top: document.querySelector('#markerTop'), left: document.querySelector('#markerLeft'),
+        right: document.querySelector('#markerRight'), bottom: document.querySelector('#markerBottom')
+      };
+      const cursorPosition = document.querySelector('#cursorPosition');
+      const dock = document.querySelector('.dock');
+      const held = new Set(), particles = [];
+      const keys = { ArrowLeft: 'L', a: 'L', A: 'L', ArrowRight: 'R', d: 'R', D: 'R', ArrowUp: 'U', w: 'U', W: 'U', ArrowDown: 'D', s: 'D', S: 'D' };
+      let dpr = 1, pos = { x: 0, y: 0 }, hue = 188, white = true, neon = false, thickLine = false, started = false;
+      let fastSpeed = false;
+      const speed = () => fastSpeed ? 1.25 : .6;
+      const bounds = (dockTop = dock.getBoundingClientRect().top) => {
+        const margin = 24;
+        return { left: margin, right: innerWidth - margin, top: 84, bottom: dockTop - margin };
+      };
+      function resize() {
+        dpr = Math.min(devicePixelRatio || 1, 2);
+        for (const c of [canvas, fx]) { c.width = Math.round(innerWidth * dpr); c.height = Math.round(innerHeight * dpr); c.style.width = innerWidth + 'px'; c.style.height = innerHeight + 'px'; }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const b = bounds();
+        pos.x = Math.max(b.left, Math.min(b.right, pos.x || innerWidth / 2));
+        pos.y = Math.max(b.top, Math.min(b.bottom, pos.y || (b.top + b.bottom) / 2));
+      }
+      // Preserve existing artwork through resizes using a snapshot before changing the backing store.
+      function resizeCanvas() {
+        const snapshot = document.createElement('canvas'); snapshot.width = canvas.width; snapshot.height = canvas.height;
+        if (snapshot.width && snapshot.height) snapshot.getContext('2d').drawImage(canvas, 0, 0);
+        resize();
+        if (snapshot.width && snapshot.height) ctx.drawImage(snapshot, 0, 0, snapshot.width, snapshot.height, 0, 0, innerWidth, innerHeight);
+      }
+      resize(); addEventListener('resize', resizeCanvas);
+      function setHeld(dir, on, el) { on ? held.add(dir) : held.delete(dir); if (el) el.classList.toggle('active', on); }
+      document.querySelectorAll('.dir').forEach(el => {
+        const dir = el.dataset.dir;
+        el.addEventListener('pointerdown', e => { e.preventDefault(); el.setPointerCapture(e.pointerId); setHeld(dir, true, el); });
+        const release = e => { e.preventDefault(); setHeld(dir, false, el); };
+        el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release); el.addEventListener('lostpointercapture', () => setHeld(dir, false, el));
+      });
+      addEventListener('keydown', e => { const d = keys[e.key]; if (d) { e.preventDefault(); held.add(d); } });
+      addEventListener('keyup', e => { const d = keys[e.key]; if (d) { held.delete(d); } });
+      addEventListener('blur', () => held.clear());
+      document.querySelector('#colorToggle').addEventListener('click', e => { white = !white; e.currentTarget.classList.toggle('white', white); });
+      document.querySelector('#strokeToggle').addEventListener('click', e => {
+        thickLine = !thickLine;
+        e.currentTarget.dataset.weight = thickLine ? 'thick' : 'thin';
+        e.currentTarget.setAttribute('aria-label', `線の太さ: ${thickLine ? '太い' : '細い'}`);
+        e.currentTarget.setAttribute('aria-pressed', String(thickLine));
+      });
+      document.querySelector('#speedToggle').addEventListener('click', e => {
+        fastSpeed = !fastSpeed;
+        e.currentTarget.dataset.speed = fastSpeed ? 'fast' : 'slow';
+        e.currentTarget.setAttribute('aria-label', `速度: ${fastSpeed ? '速い' : '遅い'}`);
+        e.currentTarget.setAttribute('aria-pressed', String(fastSpeed));
+      });
+      document.querySelector('#neonToggle').addEventListener('click', e => {
+        neon = !neon;
+        e.currentTarget.textContent = `ネオン ${neon ? 'ON' : 'OFF'}`;
+        e.currentTarget.setAttribute('aria-pressed', String(neon));
+      });
+      document.querySelector('#resetBtn').addEventListener('click', () => { ctx.clearRect(0, 0, innerWidth, innerHeight); particles.length = 0; held.clear(); started = false; document.querySelector('#hint').classList.remove('hidden'); });
+      document.querySelector('#downloadBtn').addEventListener('click', () => {
+        const b = bounds(), output = document.createElement('canvas');
+        const outWidth = Math.max(1, Math.round((b.right - b.left) * dpr));
+        const outHeight = Math.max(1, Math.round((b.bottom - b.top) * dpr));
+        output.width = outWidth; output.height = outHeight;
+        const outCtx = output.getContext('2d');
+        outCtx.fillStyle = getComputedStyle(document.body).backgroundColor;
+        outCtx.fillRect(0, 0, outWidth, outHeight);
+        outCtx.drawImage(canvas, Math.round(b.left * dpr), Math.round(b.top * dpr), outWidth, outHeight, 0, 0, outWidth, outHeight);
+        output.toBlob(blob => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob), link = document.createElement('a');
+          link.href = url; link.download = `SenSketch-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+          link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }, 'image/png');
+      });
+      function color() { return white ? '#fff' : `hsl(${hue}, 100%, 66%)`; }
+      function spark(moving) {
+        if (!neon) return;
+        const count = moving ? 2 : (Math.random() < .08 ? 1 : 0);
+        for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2, v = moving ? .5 + Math.random() * 1.2 : .2; particles.push({ x: pos.x, y: pos.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: moving ? 20 : 14, max: moving ? 20 : 14, size: .7 + Math.random() * 1.1, color: moving ? color() : 'rgba(255,255,255,.9)' }); }
+      }
+      function frame() {
+        const dockTop = dock.getBoundingClientRect().top;
+        const b = bounds(dockTop);
+        let dx = (held.has('R') ? 1 : 0) - (held.has('L') ? 1 : 0), dy = (held.has('D') ? 1 : 0) - (held.has('U') ? 1 : 0);
+        if (dx || dy) {
+          const mag = Math.hypot(dx, dy); dx = dx / mag * speed(); dy = dy / mag * speed();
+          const nx = Math.max(b.left, Math.min(b.right, pos.x + dx)), ny = Math.max(b.top, Math.min(b.bottom, pos.y + dy));
+          if (nx !== pos.x || ny !== pos.y) {
+            ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(nx, ny); ctx.strokeStyle = color(); ctx.lineWidth = thickLine ? 2.4 : 1.2; ctx.lineCap = 'round'; ctx.shadowColor = color(); ctx.shadowBlur = neon ? 13 : 0; ctx.stroke(); ctx.shadowBlur = 0;
+            pos = { x: nx, y: ny }; hue = (hue + .16) % 360; started = true; document.querySelector('#hint').classList.add('hidden'); spark(true);
+          }
+        } else if (started) spark(false);
+        fctx.clearRect(0, 0, innerWidth, innerHeight);
+        fctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--canvas-edge').trim(); fctx.lineWidth = 1;
+        fctx.strokeRect(b.left + .5, b.top + .5, b.right - b.left - 1, b.bottom - b.top - 1);
+        for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vx *= .95; p.vy *= .95; p.life--; if (p.life <= 0) { particles.splice(i, 1); continue; } fctx.globalAlpha = p.life / p.max; fctx.fillStyle = p.color; fctx.shadowColor = p.color; fctx.shadowBlur = 8; fctx.beginPath(); fctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); fctx.fill(); }
+        fctx.globalAlpha = 1; fctx.shadowBlur = 0;
+        const markers = [
+          [edgeMarkers.top, pos.x, b.top - 7],
+          [edgeMarkers.left, b.left - 7, pos.y],
+          [edgeMarkers.right, b.right + 7, pos.y],
+          [edgeMarkers.bottom, pos.x, b.bottom + 7]
+        ];
+        for (const [marker, x, y] of markers) {
+          marker.style.left = `${x}px`; marker.style.top = `${y}px`; marker.style.transform = 'translate(-50%, -50%)';
+        }
+        cursorPosition.style.left = `${pos.x}px`; cursorPosition.style.top = `${pos.y}px`; cursorPosition.style.transform = 'translate(-50%, -50%)';
+        requestAnimationFrame(frame);
+      }
+      frame();
+    })();
+  </script>
+</body>
+</html>
