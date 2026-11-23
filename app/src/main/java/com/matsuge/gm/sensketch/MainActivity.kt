@@ -10,10 +10,12 @@ import android.util.Base64
 import android.util.Log
 import android.view.View
 import android.webkit.JavascriptInterface
+import android.webkit.JsResult
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -61,7 +63,17 @@ class MainActivity : AppCompatActivity() {
         webView.isFocusable = true
         webView.isFocusableInTouchMode = true
         webView.overScrollMode = WebView.OVER_SCROLL_NEVER
-        webView.webChromeClient = WebChromeClient()
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult): Boolean {
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message ?: "絵をクリアします。よろしいですか？\n※この操作は戻せません。")
+                    .setPositiveButton("クリア") { _, _ -> result.confirm() }
+                    .setNegativeButton("キャンセル") { _, _ -> result.cancel() }
+                    .setOnCancelListener { result.cancel() }
+                    .show()
+                return true
+            }
+        }
         webView.webViewClient = WebViewClient()
         webView.addJavascriptInterface(AndroidBridge(), "SenSketchAndroid")
         webView.loadUrl("file:///android_asset/index.html")

@@ -27,6 +27,8 @@
     .tool:hover { border-color: rgba(255,255,255,.35); }
     #downloadBtn { width: 40px; padding: 0; display: grid; place-items: center; pointer-events: auto; }
     #downloadBtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    #resetBtn { width: 40px; padding: 0; margin-left: 6px; display: grid; place-items: center; }
+    #resetBtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     #colorToggle { width: 40px; padding: 0; display: grid; place-items: center; }
     .swatch { width: 17px; height: 17px; border-radius: 50%; background: linear-gradient(135deg,#62eeff,#d26dff); box-shadow: 0 0 12px rgba(98,238,255,.55); }
     #colorToggle.white .swatch { background: #fff; box-shadow: 0 0 10px #fff; }
@@ -40,6 +42,13 @@
     #speedToggle .speed-needle { stroke: #fff; stroke-width: 2; stroke-linecap: round; transform-origin: 12px 16px; transition: transform .18s ease; }
     #speedToggle[data-speed="slow"] .speed-needle { transform: rotate(-42deg); }
     #speedToggle[data-speed="fast"] .speed-needle { transform: rotate(42deg); }
+    #neonToggle { width: 40px; padding: 0; display: grid; place-items: center; }
+    #neonToggle svg { width: 22px; height: 22px; overflow: visible; }
+    #neonToggle .neon-core { fill: #828b9b; transition: fill .18s ease, filter .18s ease; }
+    #neonToggle .neon-particle { fill: none; stroke: #83eaff; stroke-width: 1.5; stroke-linecap: round; opacity: 0; transition: opacity .18s ease, filter .18s ease; }
+    #neonToggle[aria-pressed="true"] { border-color: rgba(99,225,255,.46); }
+    #neonToggle[aria-pressed="true"] .neon-core { fill: #d9fbff; filter: drop-shadow(0 0 4px rgba(78,220,255,.95)); }
+    #neonToggle[aria-pressed="true"] .neon-particle { opacity: 1; filter: drop-shadow(0 0 2px rgba(78,220,255,.75)); }
     .dock { position: fixed; z-index: 3; inset: auto 0 0; height: 20vh; min-height: 116px; display: flex; background: linear-gradient(180deg, rgba(7,9,14,.12), rgba(7,9,14,.84)); border-top: 1px solid rgba(255,255,255,.12); }
     .control-card { width: 50%; height: 100%; display: grid; gap: 1px; background: rgba(255,255,255,.16); }
     .control-card.left { grid-template-columns: 1fr 1fr; border-right: 1px solid rgba(255,255,255,.18); }
@@ -64,7 +73,7 @@
   <svg class="edge-marker vertical" id="markerBottom" viewBox="0 0 14 10" aria-hidden="true"><path d="M2 8 7 2 12 8" fill="none" stroke="#ff4058" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <div class="cursor-position" id="cursorPosition" aria-hidden="true"></div>
   <header class="topbar">
-    <div class="actions"><button class="tool white" id="colorToggle" aria-label="線の色を切り替え" title="色を切り替え"><span class="swatch"></span></button><button class="tool" id="strokeToggle" type="button" data-weight="thin" aria-label="線の太さ: 細い" aria-pressed="false" title="線の太さを切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="thin-line" d="M5 7h14" stroke-width="1.6"/><path class="thick-line" d="M5 17h14" stroke-width="4"/></svg></button><button class="tool" id="speedToggle" type="button" data-speed="slow" aria-label="速度: 遅い" aria-pressed="false" title="速度を切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="speed-arc" d="M4 17a8 8 0 0 1 16 0"/><path class="speed-needle" d="M12 16 8 9"/></svg></button><button class="tool" id="neonToggle" type="button" aria-pressed="false">ネオン OFF</button><button class="tool" id="resetBtn">クリア</button></div>
+    <div class="actions"><button class="tool white" id="colorToggle" aria-label="線の色を切り替え" title="色を切り替え"><span class="swatch"></span></button><button class="tool" id="strokeToggle" type="button" data-weight="thin" aria-label="線の太さ: 細い" aria-pressed="false" title="線の太さを切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="thin-line" d="M5 7h14" stroke-width="1.6"/><path class="thick-line" d="M5 17h14" stroke-width="4"/></svg></button><button class="tool" id="speedToggle" type="button" data-speed="slow" aria-label="速度: 遅い" aria-pressed="false" title="速度を切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="speed-arc" d="M4 17a8 8 0 0 1 16 0"/><path class="speed-needle" d="M12 16 8 9"/></svg></button><button class="tool" id="neonToggle" type="button" aria-label="ネオン: OFF" aria-pressed="false" title="ネオンを切り替え"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="neon-core" cx="12" cy="12" r="2.5"/><path class="neon-particle" d="M5 5.5v3m-1.5-1.5h3M17 3.5v3m-1.5-1.5h3M20 11v3m-1.5-1.5h3M15 18v3m-1.5-1.5h3M5 16v3m-1.5-1.5h3"/></svg></button><button class="tool" id="resetBtn" type="button" aria-label="クリア" title="クリア"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9 7V4.5h6V7m3 0-.8 13h-10L6.5 7M10 10.5v6m4-6v6"/></svg></button></div>
     <button class="tool" id="downloadBtn" type="button" aria-label="描いた画像をダウンロード" title="画像を保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg></button>
   </header>
   <footer class="dock">
@@ -93,6 +102,7 @@
       let saveTimer = null, lastSaveAt = performance.now();
       let animationFrameId = null;
       let lastCanvasGeometry = null;
+      let appInitialized = false;
       function logDiagnostic(event, details = {}) {
         const b = bounds();
         const entry = {
@@ -101,6 +111,7 @@
           viewport: { width: innerWidth, height: innerHeight, dpr },
           bounds: { left: b.left, right: b.right, top: b.top, bottom: b.bottom },
           cursor: { x: pos.x, y: pos.y },
+          heldDirections: [...held],
           details
         };
         const serialized = JSON.stringify(entry);
@@ -128,6 +139,11 @@
       }
       // Preserve existing artwork through resizes using a snapshot before changing the backing store.
       function resizeCanvas() {
+        const targetBounds = bounds();
+        if (!appInitialized || innerWidth <= 0 || innerHeight <= 0 ||
+            targetBounds.right <= targetBounds.left || targetBounds.bottom <= targetBounds.top) {
+          return;
+        }
         const previous = lastCanvasGeometry;
         const oldBounds = previous?.bounds || bounds();
         const cursorX = (pos.x - oldBounds.left) / Math.max(1, oldBounds.right - oldBounds.left);
@@ -176,7 +192,7 @@
         speedButton.setAttribute('aria-label', `速度: ${fastSpeed ? '速い' : '遅い'}`);
         speedButton.setAttribute('aria-pressed', String(fastSpeed));
         const neonButton = document.querySelector('#neonToggle');
-        neonButton.textContent = `ネオン ${neon ? 'ON' : 'OFF'}`;
+        neonButton.setAttribute('aria-label', `ネオン: ${neon ? 'ON' : 'OFF'}`);
         neonButton.setAttribute('aria-pressed', String(neon));
       }
       function persistState() {
@@ -220,7 +236,10 @@
           const serialized = window.SenSketchAndroid
             ? window.SenSketchAndroid.loadState()
             : localStorage.getItem('sensketch-state');
-          if (!serialized) return;
+          if (!serialized) {
+            logDiagnostic('restore_empty');
+            return;
+          }
           const state = JSON.parse(serialized);
           if (state.version !== 1 && state.version !== 2) return;
           logDiagnostic('restore_state', {
@@ -259,13 +278,30 @@
               });
               updatePositionMarkers(currentBounds);
             };
+            image.onerror = () => logDiagnostic('restore_artwork_error', {
+              version: state.version,
+              artworkLength: state.artwork.length
+            });
             image.src = state.artwork;
           }
         } catch (error) { console.warn('Could not restore SenSketch state.', error); }
       }
-      resize();
-      restoreState();
-      logDiagnostic('startup');
+      function initializeWhenReady() {
+        if (appInitialized || document.hidden) return;
+        const initialBounds = bounds();
+        if (innerWidth <= 0 || innerHeight <= 0 ||
+            initialBounds.right <= initialBounds.left || initialBounds.bottom <= initialBounds.top) {
+          requestAnimationFrame(initializeWhenReady);
+          return;
+        }
+        resize();
+        restoreState();
+        appInitialized = true;
+        logDiagnostic('startup');
+        drawOverlay();
+        updatePositionMarkers(bounds());
+      }
+      requestAnimationFrame(initializeWhenReady);
       addEventListener('resize', resizeCanvas);
       // Android WebView can update its usable content area after window load
       // without changing innerHeight. Track the controls that define the
@@ -286,9 +322,12 @@
           animationFrameId = null;
           scheduleSave(true);
         } else {
-          drawOverlay();
-          updatePositionMarkers(bounds());
-          requestFrame();
+          if (!appInitialized) initializeWhenReady();
+          else {
+            drawOverlay();
+            updatePositionMarkers(bounds());
+            requestFrame();
+          }
         }
       });
       function setHeld(dir, on, el) {
@@ -322,11 +361,18 @@
       });
       document.querySelector('#neonToggle').addEventListener('click', e => {
         neon = !neon;
-        e.currentTarget.textContent = `ネオン ${neon ? 'ON' : 'OFF'}`;
-        e.currentTarget.setAttribute('aria-pressed', String(neon));
+        syncControls();
         scheduleSave(true);
       });
-      document.querySelector('#resetBtn').addEventListener('click', () => { ctx.clearRect(0, 0, innerWidth, innerHeight); particles.length = 0; drawOverlay(); held.clear(); started = false; scheduleSave(true); });
+      document.querySelector('#resetBtn').addEventListener('click', () => {
+        if (!window.confirm('絵をクリアします。よろしいですか？\n※この操作は戻せません。')) return;
+        ctx.clearRect(0, 0, innerWidth, innerHeight);
+        particles.length = 0;
+        drawOverlay();
+        held.clear();
+        started = false;
+        scheduleSave(true);
+      });
       function createExportCanvas() {
         const b = bounds(), output = document.createElement('canvas');
         const outWidth = Math.max(1, Math.round((b.right - b.left) * dpr));
@@ -412,8 +458,6 @@
         }
         if (((dx || dy) && moved) || particles.length > 0) requestFrame();
       }
-      drawOverlay();
-      updatePositionMarkers(bounds());
     })();
   </script>
 </body>
