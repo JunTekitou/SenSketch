@@ -16,6 +16,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -27,6 +28,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     @Volatile
     private var pendingPngUri: Uri? = null
+    private var backPressArmed = false
+    private var exitToast: Toast? = null
+    private val backPressHandler = Handler(Looper.getMainLooper())
+    private val resetBackPress = Runnable {
+        backPressArmed = false
+        exitToast?.cancel()
+        exitToast = null
+    }
     private val stateLock = Any()
     private val drawingStateFile by lazy { AtomicFile(File(filesDir, "sensketch-state.json")) }
 
@@ -77,9 +86,28 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = WebViewClient()
         webView.addJavascriptInterface(AndroidBridge(), "SenSketchAndroid")
         webView.loadUrl("file:///android_asset/index.html")
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (backPressArmed) {
+                    backPressHandler.removeCallbacks(resetBackPress)
+                    resetBackPress.run()
+                    finish()
+                } else {
+                    backPressArmed = true
+                    exitToast = Toast.makeText(this@MainActivity, "もう一度押すと終了します", Toast.LENGTH_SHORT)
+                    exitToast?.show()
+                    backPressHandler.removeCallbacks(resetBackPress)
+                    backPressHandler.postDelayed(resetBackPress, 2_000L)
+                }
+            }
+        })
     }
 
     override fun onDestroy() {
+        backPressHandler.removeCallbacks(resetBackPress)
+        exitToast?.cancel()
+        exitToast = null
         if (::webView.isInitialized) {
             webView.removeJavascriptInterface("SenSketchAndroid")
             webView.destroy()
