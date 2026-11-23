@@ -20,7 +20,7 @@ SenSketch
 - 電話番号: 要決定（任意項目なら空欄）
 - ウェブサイト: 要決定
 - プライバシーポリシー編集元: `doc/privacy.html`（作成済み）
-  - 公開URL: 要ホスティング・登録
+  - 公開URL: https://juntekitou.github.io/GoogleAppSite/SenSketch/privacy.html（登録済み）
   - 他アプリのプライバシーポリシーURLを流用しない。
   - SenSketchの実装とデータ取り扱いを説明するページを用意する。
 
@@ -105,7 +105,7 @@ Play Consoleの各申告を開き、Release版の権限・SDK・表示内容を�
 
 # 公開前チェックリスト
 
-- [ ] `doc/privacy.html`を公開し、公開URLをPlay Consoleへ登録
+- [x] `doc/privacy.html`を公開し、公開URLをPlay Consoleへ登録
 - [ ] 連絡先メールアドレス、ウェブサイト、対象年齢、配信地域を確定
 - [ ] ストア掲載文を確定し、英語の掲載情報を用意
 - [ ] フィーチャーグラフィックを確定し、指定形式で書き出し
