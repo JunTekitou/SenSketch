@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 108 108"
+   role="img"
+   aria-labelledby="title"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="sensketch-foreground.svg"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="5.6851852"
+     inkscape:cx="54"
+     inkscape:cy="54.087948"
+     inkscape:current-layer="svg1" />
+  <title
+     id="title">SenSketch adaptive icon foreground</title>
+  <g
+     id="g1">
+    <path
+       d="M 70.567741,35.771568 H 50.402927 c -11.757539,0 -12.027696,0.09709 -12.027696,9.255857 0,8.455186 0.270157,8.594725 11.150965,8.594725 h 8.76731 c 10.880808,0 11.150965,0.139539 11.150965,8.594725 0,9.158767 -0.270157,9.255857 -12.027696,9.255857 H 39.251961"
+       fill="none"
+       stroke="#f4f6fb"
+       stroke-width="4.75046"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path1"
+       sodipodi:nodetypes="cssssssc" />
+    <circle
+       cx="69.040146"
+       cy="35.76873"
+       r="3.7687297"
+       fill="#62eeff"
+       id="circle1"
+       style="fill:#72fffc;fill-opacity:1;stroke-width:0.753746" />
+  </g>
+</svg>
