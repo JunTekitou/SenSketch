@@ -1,0 +1,4 @@
+# JavaScript calls these methods by their original names through WebView reflection.
+-keepclassmembers class com.matsuge.gm.sensketch.MainActivity$AndroidBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}
