@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  SenSketch — Google Play feature graphic (editable SVG source)
+  Canvas: 1024 x 500 px. Export an opaque PNG/JPEG at this exact size for Play Console.
+  Text remains editable. Main composition stays within the central safe area.
+-->
+
+<svg
+   width="1024"
+   height="500"
+   viewBox="0 0 1024 500"
+   version="1.1"
+   id="svg21"
+   sodipodi:docname="feature_graphic.svg"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   inkscape:export-filename="feature_graphic.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview21"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.228"
+     inkscape:cx="511.80782"
+     inkscape:cy="249.59283"
+     inkscape:current-layer="svg21" />
+  <title
+     id="title1">SenSketch — Google Play feature graphic</title>
+  <desc
+     id="desc1">A quiet dark canvas with a luminous continuous line drawing and the SenSketch wordmark.</desc>
+  <defs
+     id="defs9">
+    <linearGradient
+       id="background"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="1">
+      <stop
+         offset="0"
+         stop-color="#10151d"
+         id="stop1" />
+      <stop
+         offset="0.56"
+         stop-color="#0b1017"
+         id="stop2" />
+      <stop
+         offset="1"
+         stop-color="#151522"
+         id="stop3" />
+    </linearGradient>
+    <radialGradient
+       id="ambientGlow"
+       cx="0.37"
+       cy="0.52"
+       r="0.55">
+      <stop
+         offset="0"
+         stop-color="#55dbe2"
+         stop-opacity="0.13"
+         id="stop4" />
+      <stop
+         offset="1"
+         stop-color="#55dbe2"
+         stop-opacity="0"
+         id="stop5" />
+    </radialGradient>
+    <linearGradient
+       id="ink"
+       x1="67.798974"
+       y1="501.03299"
+       x2="359.00024"
+       y2="209.83173"
+       gradientTransform="matrix(1.4333658,0,0,0.69765862,266.28664,-89.576547)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-color="#78e9e5"
+         id="stop6" />
+      <stop
+         offset="0.54"
+         stop-color="#b6f5ef"
+         id="stop7" />
+      <stop
+         offset="1"
+         stop-color="#f4fbff"
+         id="stop8" />
+    </linearGradient>
+    <filter
+       id="lineGlow"
+       x="-0.051679118"
+       y="-0.11917033"
+       width="1.1033634"
+       height="1.2383354">
+      <feGaussianBlur
+         stdDeviation="7"
+         result="blur"
+         id="feGaussianBlur8" />
+      <feColorMatrix
+         in="blur"
+         type="matrix"
+         values="0 0 0 0 0.24  0 0 0 0 0.78  0 0 0 0 0.82  0 0 0 .42 0"
+         result="coloredGlow"
+         id="feColorMatrix8" />
+      <feMerge
+         id="feMerge9">
+        <feMergeNode
+           in="coloredGlow"
+           id="feMergeNode8" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode9" />
+      </feMerge>
+    </filter>
+    <filter
+       id="softShadow"
+       x="-20%"
+       y="-20%"
+       width="140%"
+       height="140%">
+      <feGaussianBlur
+         stdDeviation="12"
+         id="feGaussianBlur9" />
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect
+     width="1024"
+     height="500"
+     fill="url(#background)"
+     id="rect9" />
+  <rect
+     width="1024"
+     height="500"
+     fill="url(#ambientGlow)"
+     id="rect10" />
+  <!-- Subtle drafting grid, deliberately low contrast -->
+  <g
+     id="grid"
+     stroke="#b7d5e0"
+     stroke-opacity="0.045"
+     stroke-width="1">
+    <path
+       d="M64 0V500 M144 0V500 M224 0V500 M304 0V500 M384 0V500 M464 0V500 M544 0V500 M624 0V500 M704 0V500 M784 0V500 M864 0V500 M944 0V500"
+       id="path10" />
+    <path
+       d="M0 60H1024 M0 140H1024 M0 220H1024 M0 300H1024 M0 380H1024 M0 460H1024"
+       id="path11" />
+  </g>
+  <!-- Framed drawing area -->
+  <g
+     id="drawing-area">
+    <rect
+       x="70"
+       y="72"
+       width="438"
+       height="356"
+       rx="28"
+       fill="#0b1119"
+       fill-opacity="0.58"
+       stroke="#d8eef3"
+       stroke-opacity="0.12"
+       stroke-width="1.5"
+       id="rect11" />
+    <path
+       style="stroke-width:5;stroke-linecap:square;stroke-linejoin:round;paint-order:markers fill stroke;stroke:#72fffc;stroke-dasharray:none;fill:none"
+       d="m 117.26384,206.84039 v -29.31596 h 35.83062 v 83.87622 h 27.6873 v 30.13029 h 32.57329 v 53.74593 H 332.24756 V 213.35505 h -97.71987 v 48.85993 h 41.53094 v 8.95766 h 11.40065 v 17.10098 h 75.7329 v 56.18892 h 38.27362 v -55.37459 h 23.61563 v -38.27362 h 32.57329"
+       id="path21"
+       inkscape:label="continuous-drawing" />
+    <path
+       d="M94 112V100Q94 96 98 96H126 M458 96H482Q486 96 486 100V124 M486 376V400Q486 404 482 404H456 M122 404H98Q94 404 94 400V374"
+       fill="none"
+       stroke="#8fe5e2"
+       stroke-opacity="0.4"
+       stroke-width="2"
+       stroke-linecap="round"
+       id="path12" />
+    <!-- One uninterrupted illustrative stroke: a small landscape/sun motif -->
+    <!-- Current drawing position -->
+    <circle
+       cx="117"
+       cy="207"
+       r="10"
+       fill="#8ce9e6"
+       fill-opacity="0.12"
+       id="circle12" />
+    <circle
+       cx="117"
+       cy="207"
+       r="4.5"
+       fill="#f3ffff"
+       id="circle13" />
+    <circle
+       cx="117"
+       cy="207"
+       r="1.7"
+       fill="#65dedb"
+       id="circle14" />
+    <!-- Small quiet edge-position marks -->
+    <path
+       d="M288 82v8 M500 246h-8 M288 418v-8 M78 246h8"
+       stroke="#90e8e3"
+       stroke-opacity="0.64"
+       stroke-width="2"
+       stroke-linecap="round"
+       id="path14" />
+  </g>
+  <!-- Wordmark and concise description -->
+  <g
+     id="wordmark">
+    <path
+       d="M572 180h28"
+       stroke="#72e3df"
+       stroke-width="3"
+       stroke-linecap="round"
+       id="path15" />
+    <text
+       x="572"
+       y="250"
+       fill="#f5f8fc"
+       font-family="Inter, 'Segoe UI', Roboto, Arial, sans-serif"
+       font-size="72px"
+       font-weight="650"
+       letter-spacing="-2.5"
+       id="text15">WireSketch</text>
+    <text
+       x="576"
+       y="302"
+       fill="#aebbc8"
+       font-family="Inter, 'Segoe UI', Roboto, Arial, sans-serif"
+       font-size="25"
+       font-weight="400"
+       letter-spacing="0.2"
+       id="text16">Draw without lifting.</text>
+    <text
+       x="576"
+       y="352"
+       fill="#75d9d7"
+       font-family="Inter, 'Segoe UI', Roboto, Arial, sans-serif"
+       font-size="15"
+       font-weight="600"
+       letter-spacing="3.2"
+       id="text17">ONE LINE · YOUR IMAGINATION</text>
+  </g>
+  <!-- A few restrained guide dots add depth without competing with the drawing -->
+  <g
+     id="accents"
+     fill="#9cebe7">
+    <circle
+       cx="891"
+       cy="104"
+       r="2"
+       opacity="0.42"
+       id="circle17" />
+    <circle
+       cx="920"
+       cy="126"
+       r="1.5"
+       opacity="0.28"
+       id="circle18" />
+    <circle
+       cx="867"
+       cy="132"
+       r="1.5"
+       opacity="0.22"
+       id="circle19" />
+    <circle
+       cx="950"
+       cy="390"
+       r="2"
+       opacity="0.3"
+       id="circle20" />
+    <circle
+       cx="924"
+       cy="412"
+       r="1.5"
+       opacity="0.2"
+       id="circle21" />
+  </g>
+</svg>

@@ -1,0 +1,205 @@
+
+--------------------------------------------------
+全アプリ共通で反映したい設定・対応まとめ
+--------------------------------------------------
+
+このファイルは、たこすみ(SumiDrawing)に限らず、同じデベロッパーアカウントで
+公開している他アプリ(TapFrog, AutoTap, SacrificeStep, TunnelShot,
+WireframeModeler 等)にも横展開すべき設定変更・対応を、理由付きで記録する。
+新しい項目が出るたびに追記していく。AIアシスタントが別アプリの作業をする際は、
+このファイルの内容を思い出し、同様の対応が漏れていないか確認すること。
+
+==================================================
+【1】compileSdk / targetSdk を最新のAPIレベルに追従させる
+==================================================
+
+# 内容
+`app/build.gradle.kts` の compileSdk / targetSdk を、Android の最新安定版APIレベルに
+定期的に上げる。たこすみでは以下のように変更した(2026-08頃):
+
+    compileSdk {
+        version = release(37)   // 旧: release(36) { minorApiLevel = 1 }
+    }
+    defaultConfig {
+        targetSdk = 37           // 旧: 36
+    }
+
+あわせて `versionCode` / `versionName` もインクリメントする
+(例: versionCode 2→5, versionName "1.0.2"→"1.0.5")。
+
+# 理由
+Google Playには「targetSdkVersion要件」があり、新規アプリ・アプリの更新は
+毎年おおよそ8月頃の基準日までに、その時点で最新(またはその1つ前)のAPIレベルを
+targetSdkに指定していないと、Play Consoleでのアップデートの申請自体がブロックされる。
+放置すると新しいAndroid端末のユーザーに対する公開が制限されることもある。
+
+この要件はアプリ単位ではなくデベロッパーアカウント単位の運用ルールとして
+毎年発生するため、1つのアプリで対応したら、同じアカウントで公開している
+他の全アプリについても同じタイミングで同様の対応が必要になる。
+1つのアプリだけ直して他を忘れる、ということが起きやすいので要注意。
+
+# 他アプリへの適用時にやること
+1. 各アプリの `app/build.gradle.kts` の compileSdk / targetSdk を確認し、
+   最新の安定版APIレベルに合わせる。
+2. minSdk はアプリごとの事情(対応端末の下限)があるので、むやみに上げない。
+   ここは各アプリ個別の判断を優先する。
+3. versionCode / versionName をインクリメントする。
+4. ビルドが通ることを確認し(`./gradlew assembleRelease` 等)、
+   Android Studio上の非推奨API警告が新たに出ていないか軽く確認する。
+
+==================================================
+【2】R8 full mode を有効にする(gradle.properties)
+==================================================
+
+# 内容
+`gradle.properties` に以下を追加する。TapFrogで先に導入済みだった設定を
+たこすみにも横展開した(2026-08):
+
+    # Enables R8 full mode for better optimization.
+    android.enableR8.fullMode=true
+
+# 理由
+R8 full modeは通常モードより踏み込んだ最適化(積極的なインライン化、
+クラス/メンバーのマージ・削除など)を行うモード。これにより:
+- コードがより激しく変形されるため難読化が強まる(暗号化ではないが、
+  リバースエンジニアリングへの耐性という点で似た効果がある)
+- 最適化が進むことでAPKサイズ縮小・実行時のパフォーマンス改善が見込める
+
+デメリットとして、通常モードでは問題なかったコードがfull modeでは
+挙動が変わる(意図せずクラスやメンバーが削除される等)ケースがある。
+特にWebViewのJavascriptInterfaceのように静的解析が届かない箇所は要注意
+(【1】の内容とは別項目だが関連する。`-keepclassmembers` ルールがあれば
+基本的には問題ない)。
+
+# 他アプリへの適用時にやること
+1. `gradle.properties` に `android.enableR8.fullMode=true` を追加。
+2. `./gradlew bundleRelease` (または assembleRelease) でビルドが通ることを確認。
+3. `app/build/outputs/mapping/release/mapping.txt` を開き、
+   JavascriptInterfaceや外部から名前で参照されるメソッド・クラスが
+   意図通りの名前で残っているか確認する
+   (例: `void saveImage(java.lang.String) -> saveImage` のように
+   矢印の前後で名前が変わっていなければOK)。
+4. 実機のreleaseビルド(signed)で実際の操作(保存・読み込み等、
+   JSブリッジ経由の機能)が動作することを確認する。
+
+==================================================
+【1.5】(【2】の補足) AGP 9.2.1の新DSLで optimization.enable=true にする場合の追加フラグ
+==================================================
+
+# 内容
+`app/build.gradle.kts` の buildTypes.release が新DSL(`optimization { enable = ... }`、
+旧`isMinifyEnabled`に相当)を使っているプロジェクトで、release向けにR8による
+縮小・最適化を有効化する(`optimization { enable = true }`)場合、それだけでは
+以下のエラーでconfigurationが失敗する(WireframeModelerで2026-08に確認):
+
+    Cannot use optimization.enable=true without setting android.r8.gradual.support flag.
+
+`gradle.properties` に以下を追加することで解消する(AGP 9.2.1時点では実験的フラグ):
+
+    android.r8.gradual.support=true
+
+# 理由
+AGP 9.2.1時点で `optimization.enable` DSLはまだ実験的(gradual R8移行)扱いで、
+明示的にオプトインするフラグが別途必要という仕様になっている。
+【2】のR8 full mode設定(`android.enableR8.fullMode=true`)とは別物で、
+新DSL(`optimization`ブロック)を使っているプロジェクトでだけ踏む問題。
+旧DSL(`isMinifyEnabled = true` + `proguardFiles(...)`)を使っているプロジェクトでは
+このフラグは不要な可能性が高い(未検証)。
+
+# 他アプリへの適用時にやること
+1. 対象アプリの `buildTypes.release` が `optimization { enable = ... }` の新DSLか、
+   `isMinifyEnabled` の旧DSLかを確認する。
+2. 新DSLで `enable = true` にする場合は、`gradle.properties` に
+   `android.r8.gradual.support=true` を追加してから `./gradlew assembleRelease` を通す。
+3. あわせて `app/proguard-rules.pro` に、WebViewの `@JavascriptInterface` ブリッジなど
+   静的解析が届かない箇所の `-keepclassmembers` ルールが入っているか確認し、
+   `mapping.txt` でメソッド名が変わっていないことを確認する(【2】の手順3と同じ)。
+
+==================================================
+【3】edge-to-edge対応: 全Activityでシステムバーのinsetをpaddingとして適用する
+==================================================
+
+# 内容
+targetSdk 35以上ではOSが強制的にedge-to-edge描画になり、何もしないと
+画面の内容がステータスバー(上)やジェスチャー/ナビゲーションバー(下)の
+裏に描画されてしまう。たこすみでは `MainActivity`(描画キャンバス画面)と
+`GalleryActivity`(保存画像の一覧画面)の両方に、ルートビューへ以下のような
+`WindowInsetsCompat` リスナーを追加して対処した(2026-08):
+
+    ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.xxxRoot)) { view, insets ->
+        val bars = insets.getInsets(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+        )
+        view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+        insets
+    }
+
+リスナーは、システムがinsetを配布する直接の子ビュー(ルートのConstraintLayout等)に
+付ける必要がある。素のConstraintLayoutは子(WebViewやRecyclerView)まで自動で
+insetを伝播してくれないため、各Activityのルートビューに個別に仕込む必要がある。
+
+# 理由
+edge-to-edge化はActivity単位で発生する問題であり、1つの画面(たとえば最初に
+作ったメイン画面)で対応しても、アプリ内の別画面(一覧・設定・ダイアログ的な
+別Activity等)には自動的に反映されない。「メイン画面だけ直して他の画面を
+見た目チェックし忘れる」というのが起きやすいポイント。
+
+複数アプリ展開時も同様で、最初に気づいた1アプリのメイン画面だけ直して終わりに
+せず、そのアプリ内の全Activity、および他アプリの全Activityについても同じ確認が
+必要になる。
+
+# 他アプリへの適用時にやること
+1. アプリ内の全Activity(メイン画面だけでなく、一覧・設定・サブ画面等も含む)を
+   洗い出す。
+2. 各ActivityのレイアウトXMLのルートに `android:id` を付与する
+   (未設定の場合)。
+3. 各ActivityのonCreate()に、上記と同様の `WindowInsetsCompat` リスナーを
+   ルートビューに対して追加する。
+4. 実機(できればジェスチャーナビゲーション + 表示切り欠き(カメラ穴)がある
+   機種)で、各画面の上端・下端がシステムバーに隠れていないか目視確認する。
+
+==================================================
+【4】リリース版AAB/APKの軽量化と16 KBページサイズ対応 (ABIフィルタ)
+==================================================
+
+# 内容
+`app/build.gradle.kts` の `defaultConfig` 内で `ndk.abiFilters` を設定し、
+リリース対象のアーキテクチャを実機で必要なものだけに絞る。
+また、Google Playの16 KBページサイズ要件に対応する設定を `gradle.properties`
+および `app/build.gradle.kts` に追加する(2026-08):
+
+    // app/build.gradle.kts
+    android {
+        defaultConfig {
+            ndk {
+                // 実機(arm)に絞り、エミュレータ用(x86)を除外して軽量化
+                abiFilters.clear()
+                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+            }
+        }
+        packaging {
+            jniLibs {
+                // 16 KBページサイズ対応を有効化
+                useLegacyPackaging = false
+            }
+        }
+    }
+
+    // gradle.properties
+    android.bundle.jnilibs.allow-all-shared-libs=true
+
+# 理由
+デフォルトでは、依存ライブラリがサポートする全アーキテクチャ(x86等含む)が
+パッケージに含まれる。不要なアーキテクチャを除くことで以下のメリットがある:
+- **アプリサイズの削減**: ネイティブライブラリの重複が減り、APK/AABが軽くなる。
+- **Google Play要件のクリア**: 古いライブラリ(TAndroidLame等)が
+  エミュレータ用(x86_64)で16 KBページサイズに対応していない場合、
+  Google Playへのアップロード時にエラーとなる。不要なx86系を除外することで
+  このバリデーションを回避し、審査を通すことができる。
+
+# 他アプリへの適用時にやること
+1. `app/build.gradle.kts` に `abiFilters` を追加し、`arm64-v8a`, `armeabi-v7a`
+   に絞る。
+2. `packaging.jniLibs.useLegacyPackaging = false` を設定。
+3. `gradle.properties` に `android.bundle.jnilibs.allow-all-shared-libs=true` を追加。
+4. `[Build] > [Clean Project]` を実行してからAABを生成する。
