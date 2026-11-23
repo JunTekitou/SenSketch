@@ -23,6 +23,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -75,9 +76,9 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult): Boolean {
                 AlertDialog.Builder(this@MainActivity)
-                    .setMessage(message ?: "絵をクリアします。よろしいですか？\n※この操作は戻せません。")
-                    .setPositiveButton("クリア") { _, _ -> result.confirm() }
-                    .setNegativeButton("キャンセル") { _, _ -> result.cancel() }
+                    .setMessage(message ?: uiText("絵をクリアします。よろしいですか？\n※この操作は戻せません。", "Clear the drawing?\nThis action cannot be undone."))
+                    .setPositiveButton(uiText("クリア", "Clear")) { _, _ -> result.confirm() }
+                    .setNegativeButton(uiText("キャンセル", "Cancel")) { _, _ -> result.cancel() }
                     .setOnCancelListener { result.cancel() }
                     .show()
                 return true
@@ -95,7 +96,7 @@ class MainActivity : AppCompatActivity() {
                     finish()
                 } else {
                     backPressArmed = true
-                    exitToast = Toast.makeText(this@MainActivity, "もう一度押すと終了します", Toast.LENGTH_SHORT)
+                    exitToast = Toast.makeText(this@MainActivity, uiText("もう一度押すと終了します", "Press back again to exit"), Toast.LENGTH_SHORT)
                     exitToast?.show()
                     backPressHandler.removeCallbacks(resetBackPress)
                     backPressHandler.postDelayed(resetBackPress, 2_000L)
@@ -114,6 +115,9 @@ class MainActivity : AppCompatActivity() {
         }
         super.onDestroy()
     }
+
+    private fun uiText(japanese: String, english: String): String =
+        if (Locale.getDefault().language.startsWith("en", ignoreCase = true)) english else japanese
 
     private inner class AndroidBridge {
         @JavascriptInterface
@@ -162,7 +166,7 @@ class MainActivity : AppCompatActivity() {
             val image = runCatching { Base64.decode(base64Image, Base64.DEFAULT) }.getOrNull()
             if (image == null || image.isEmpty()) {
                 runOnUiThread {
-                    Toast.makeText(this@MainActivity, "画像を作成できませんでした", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, uiText("画像を作成できませんでした", "Could not create the image"), Toast.LENGTH_LONG).show()
                 }
                 return
             }
@@ -172,15 +176,17 @@ class MainActivity : AppCompatActivity() {
             if (uri == null) return
             runCatching {
                 contentResolver.openOutputStream(uri)?.use { it.write(image) }
-                    ?: error("保存先を開けませんでした")
+                    ?: error(uiText("保存先を開けませんでした", "Could not open the save location"))
             }.onSuccess {
                 runOnUiThread {
-                    val toast = Toast.makeText(this@MainActivity, "画像を保存しました", Toast.LENGTH_SHORT)
+                    val toast = Toast.makeText(this@MainActivity, uiText("画像を保存しました", "Image saved"), Toast.LENGTH_SHORT)
                     toast.show()
                     Handler(Looper.getMainLooper()).postDelayed({ toast.cancel() }, 2_000L)
                 }
             }.onFailure {
-                runOnUiThread { Toast.makeText(this@MainActivity, "画像を保存できませんでした", Toast.LENGTH_LONG).show() }
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, uiText("画像を保存できませんでした", "Could not save the image"), Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

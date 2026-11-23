@@ -86,6 +86,8 @@
   </footer>
   <script>
     (() => {
+      const isEnglish = (navigator.language || '').toLowerCase().startsWith('en');
+      const text = (japanese, english) => isEnglish ? english : japanese;
       const canvas = document.querySelector('#art'), ctx = canvas.getContext('2d');
       const fx = document.querySelector('#fx'), fctx = fx.getContext('2d');
       const edgeMarkers = {
@@ -185,16 +187,39 @@
         colorButton.classList.toggle('white', white);
         const strokeButton = document.querySelector('#strokeToggle');
         strokeButton.dataset.weight = thickLine ? 'thick' : 'thin';
-        strokeButton.setAttribute('aria-label', `線の太さ: ${thickLine ? '太い' : '細い'}`);
+        strokeButton.setAttribute('aria-label', `${text('線の太さ', 'Line width')}: ${thickLine ? text('太い', 'Thick') : text('細い', 'Thin')}`);
         strokeButton.setAttribute('aria-pressed', String(thickLine));
         const speedButton = document.querySelector('#speedToggle');
         speedButton.dataset.speed = fastSpeed ? 'fast' : 'slow';
-        speedButton.setAttribute('aria-label', `速度: ${fastSpeed ? '速い' : '遅い'}`);
+        speedButton.setAttribute('aria-label', `${text('速度', 'Speed')}: ${fastSpeed ? text('速い', 'Fast') : text('遅い', 'Slow')}`);
         speedButton.setAttribute('aria-pressed', String(fastSpeed));
         const neonButton = document.querySelector('#neonToggle');
-        neonButton.setAttribute('aria-label', `ネオン: ${neon ? 'ON' : 'OFF'}`);
+        neonButton.setAttribute('aria-label', `${text('ネオン', 'Neon')}: ${neon ? 'ON' : 'OFF'}`);
         neonButton.setAttribute('aria-pressed', String(neon));
       }
+      function applyTranslations() {
+        document.documentElement.lang = isEnglish ? 'en' : 'ja';
+        document.querySelector('#art').setAttribute('aria-label', text('一筆書きキャンバス', 'One-stroke drawing canvas'));
+        const staticLabels = {
+          colorToggle: ['線の色を切り替え', 'Toggle pen color', '色を切り替え', 'Change pen color'],
+          strokeToggle: ['線の太さを切り替え', 'Toggle line width', '線の太さを切り替え', 'Toggle line width'],
+          speedToggle: ['速度を切り替え', 'Toggle drawing speed', '速度を切り替え', 'Toggle drawing speed'],
+          neonToggle: ['ネオンを切り替え', 'Toggle neon effect', 'ネオンを切り替え', 'Toggle neon effect'],
+          resetBtn: ['クリア', 'Clear drawing', 'クリア', 'Clear drawing'],
+          downloadBtn: ['描いた画像をダウンロード', 'Download drawing', '画像を保存', 'Save drawing']
+        };
+        for (const [id, labels] of Object.entries(staticLabels)) {
+          const element = document.getElementById(id);
+          element.setAttribute('aria-label', text(labels[0], labels[1]));
+          element.title = text(labels[2], labels[3]);
+        }
+        document.querySelector('.control-card.left').setAttribute('aria-label', text('左手用コントローラー', 'Left-hand controller'));
+        document.querySelector('.control-card.right').setAttribute('aria-label', text('右手用コントローラー', 'Right-hand controller'));
+        const directions = { L: ['左へ', 'Move left'], R: ['右へ', 'Move right'], U: ['上へ', 'Move up'], D: ['下へ', 'Move down'] };
+        document.querySelectorAll('.dir').forEach(button => button.setAttribute('aria-label', text(...directions[button.dataset.dir])));
+        syncControls();
+      }
+      applyTranslations();
       function persistState() {
         const b = bounds();
         const savedArtwork = document.createElement('canvas');
@@ -348,14 +373,14 @@
       document.querySelector('#strokeToggle').addEventListener('click', e => {
         thickLine = !thickLine;
         e.currentTarget.dataset.weight = thickLine ? 'thick' : 'thin';
-        e.currentTarget.setAttribute('aria-label', `線の太さ: ${thickLine ? '太い' : '細い'}`);
+        e.currentTarget.setAttribute('aria-label', `${text('線の太さ', 'Line width')}: ${thickLine ? text('太い', 'Thick') : text('細い', 'Thin')}`);
         e.currentTarget.setAttribute('aria-pressed', String(thickLine));
         scheduleSave(true);
       });
       document.querySelector('#speedToggle').addEventListener('click', e => {
         fastSpeed = !fastSpeed;
         e.currentTarget.dataset.speed = fastSpeed ? 'fast' : 'slow';
-        e.currentTarget.setAttribute('aria-label', `速度: ${fastSpeed ? '速い' : '遅い'}`);
+        e.currentTarget.setAttribute('aria-label', `${text('速度', 'Speed')}: ${fastSpeed ? text('速い', 'Fast') : text('遅い', 'Slow')}`);
         e.currentTarget.setAttribute('aria-pressed', String(fastSpeed));
         scheduleSave(true);
       });
@@ -365,7 +390,7 @@
         scheduleSave(true);
       });
       document.querySelector('#resetBtn').addEventListener('click', () => {
-        if (!window.confirm('絵をクリアします。よろしいですか？\n※この操作は戻せません。')) return;
+        if (!window.confirm(text('絵をクリアします。よろしいですか？\n※この操作は戻せません。', 'Clear the drawing?\nThis action cannot be undone.'))) return;
         ctx.clearRect(0, 0, innerWidth, innerHeight);
         particles.length = 0;
         drawOverlay();
